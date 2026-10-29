@@ -79,7 +79,7 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     await vacancyForm.createVacancy(data);
     await vacancyForm.expectSaved();
 
-    await vacanciesPage.find(data.name);
+    await vacanciesPage.findClosed(data.name);
     await vacanciesPage.expectRowStatus(data.name, 'Closed');
   });
 
@@ -178,10 +178,11 @@ test.describe('Recruitment > Vacancies — Edição', () => {
     await vacanciesPage.expectRowStatus(data.name, 'Active');
 
     await vacanciesPage.openEdit(data.name);
+    await vacancyForm.expectOnEditPage(); // espera os dados carregarem antes de mexer no switch
     await vacancyForm.fillForm({ active: false });
     await vacancyForm.saveAndWait();
 
-    await vacanciesPage.find(data.name);
+    await vacanciesPage.findClosed(data.name);
     await vacanciesPage.expectRowStatus(data.name, 'Closed');
   });
 

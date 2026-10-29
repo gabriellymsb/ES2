@@ -52,8 +52,27 @@ class VacanciesPage extends BasePage {
     if (vacancy) await this.selectOption('Vacancy', vacancy);
     if (hiringManager) await this.selectOption('Hiring Manager', hiringManager);
     if (status) await this.selectOption('Status', status);
+
+    // espera a lista ser recarregada; sem isso, as linhas lidas logo após o clique
+    // podem ser as da lista antiga (sem filtro), pois o demo é lento
+    const reloaded = this.page
+      .waitForResponse((r) => r.request().method() === 'GET' && r.url().includes('/recruitment/vacancies'), {
+        timeout: 20_000,
+      })
+      .catch(() => null);
     await this.searchButton.click();
+    await reloaded;
     await expect(this.recordsInfo).toBeVisible();
+  }
+
+  /**
+   * Vacancies fechadas (Closed) não aparecem no dropdown "Vacancy" do filtro;
+   * para localizá-las, filtra por Status = Closed e percorre os resultados.
+   */
+  async findClosed(name) {
+    await this.goto();
+    await this.search({ status: 'Closed' });
+    await this.expectVacancyInResults(name);
   }
 
   /**
@@ -102,9 +121,13 @@ class VacanciesPage extends BasePage {
   /** Limpeza silenciosa: remove a vacancy se ela existir. */
   async deleteIfExists(name) {
     await this.goto();
-    if (!(await this.vacancyFilterHasOption(name))) return;
-    await this.search({ vacancy: name });
-    if ((await this.row(name).count()) > 0) await this.deleteVacancy(name);
+    if (await this.vacancyFilterHasOption(name)) {
+      await this.search({ vacancy: name });
+    } else {
+      // pode ser uma vacancy fechada (não aparece no dropdown) ou já ter sido apagada
+      await this.search({ status: 'Closed' });
+    }
+    if (await this.findInResults(name, { timeout: 3_000 })) await this.deleteVacancy(name);
   }
 
   // ---- asserções ----
@@ -117,17 +140,34 @@ class VacanciesPage extends BasePage {
    * (usado quando o filtro devolve mais de 50 registros).
    */
   async expectVacancyInResults(name) {
+    if (await this.findInResults(name)) return;
+    await expect(this.row(name)).toHaveCount(1, { timeout: 1_000 }); // falha com mensagem clara
+  }
+
+  /**
+   * Procura a vacancy nos resultados atuais, página por página.
+   * @returns {Promise<boolean>}
+   */
+  async findInResults(name, { timeout = 15_000 } = {}) {
     const pager = this.page.getByRole('navigation', { name: 'Pagination Navigation' });
-    await expect(this.rows.first()).toBeVisible();
     for (let current = 1; current <= 10; current++) {
-      if ((await this.row(name).count()) > 0) return;
+      // espera a lista carregar (sem linhas = nenhum resultado)
+      await this.rows.first().waitFor({ timeout }).catch(() => {});
+      if ((await this.row(name).count()) > 0) return true;
+
       const nextPage = pager.getByRole('button', { name: String(current + 1), exact: true });
-      if ((await nextPage.count()) === 0) break;
+      if ((await nextPage.count()) === 0) {
+        // última página: uma chance extra, caso a lista ainda esteja terminando de renderizar
+        return this.row(name)
+          .first()
+          .waitFor({ timeout: 3_000 })
+          .then(() => true, () => false);
+      }
       const firstRowBefore = await this.rows.first().innerText();
       await nextPage.click();
       await expect.poll(() => this.rows.first().innerText()).not.toBe(firstRowBefore);
     }
-    await expect(this.row(name)).toHaveCount(1, { timeout: 2_000 });
+    return false;
   }
 
   async expectVacancyNotListed(name) {
