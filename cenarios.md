@@ -75,7 +75,9 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 - **Job Title**: obrigatório (lista).
 - **Hiring Manager**: obrigatório (autocomplete de funcionários).
 - **Description**, **Number of Positions**, **Active** e **Publish in RSS**: opcionais.
-- Ao salvar: toast de sucesso; na lista, cada vacancy exibe Job Title, Hiring Manager e Status (**Active** ou **Closed**).
+- Ao salvar com sucesso, o sistema abre a tela de edição da vacancy criada (`Edit Vacancy`, URL com o id). O toast "Successfully Saved" some junto com a página anterior, por isso **não** é usado como critério de aceitação.
+- Na lista, cada vacancy exibe Job Title, Hiring Manager (primeiro e último nome) e Status (**Active** ou **Closed**).
+- A lista é **paginada** (50 por página) e o dropdown "Vacancy" do filtro oferece só vacancies **ativas**. Vacancies fechadas são localizadas pelo filtro Status = Closed.
 
 ### 3.2 PCE
 
@@ -104,7 +106,7 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 | Job Title selecionado | V | V | F | V | F | V |
 | Hiring Manager selecionado | V | V | V | F | F | V |
 | Nome único | V | – | – | – | – | F |
-| **Efeito** | Salva + toast | Required (nome) | Required (job title) | Required (manager) | Required nos 3 | "Already exists" |
+| **Efeito** | Salva e abre a tela de edição | Required (nome) | Required (job title) | Required (manager) | Required nos 3 | "Already exists" |
 
 ### 3.5 Cenários
 
@@ -113,7 +115,7 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 |---|---|---|---|---|
 | VAC-01 | Adicionar vacancy só com campos obrigatórios | PCE V1,V2,V3 · D1 | Sistema abre a tela de edição da vacancy criada (`Edit Vacancy`); ela aparece na lista com status Active | Sim |
 | VAC-02 | Adicionar vacancy com todos os campos (descrição, nº de vagas, RSS) | PCE | Salva; ao reabrir, os dados persistidos estão corretos | Sim |
-| VAC-03 | Adicionar vacancy desmarcando "Active" | PCE V5 | Na lista, status = Closed | Sim |
+| VAC-03 | Adicionar vacancy desmarcando "Active" | PCE V5 | Localizada pelo filtro Status = Closed, aparece com status Closed | Sim |
 | VAC-04 | Salvar sem preencher nada | D5 | "Required" em Vacancy Name, Job Title e Hiring Manager; nada é salvo | Sim |
 | VAC-05 | Salvar sem Vacancy Name | PCE I1 · D2 | "Required" no nome | Sim |
 | VAC-06 | Salvar sem Job Title | PCE I4 · D3 | "Required" no Job Title | Sim |
@@ -126,17 +128,17 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 #### Edição
 | ID | Cenário | Técnica | Resultado esperado | Automatizar |
 |---|---|---|---|---|
-| VAC-12 | Editar nome e descrição | PCE | Alteração gravada; lista mostra o novo nome e o antigo some | Sim |
-| VAC-13 | Fechar vacancy (desmarcar Active) | PCE V5 | Status na lista passa a Closed | Sim |
+| VAC-12 | Editar nome e descrição | PCE | Alteração gravada; a vacancy é encontrada pelo novo nome e o nome antigo deixa de ser oferecido no filtro "Vacancy" | Sim |
+| VAC-13 | Fechar vacancy (desmarcar Active) | PCE V5 | Vacancy passa a ser encontrada pelo filtro Status = Closed, com status Closed | Sim |
 | VAC-14 | Editar apagando o nome | PCE I1 | "Required"; alteração não é gravada | Sim |
 
 #### Pesquisa
 | ID | Cenário | Técnica | Resultado esperado | Automatizar |
 |---|---|---|---|---|
 | VAC-15 | Pesquisar por Vacancy (nome) | PCE V6 | Exatamente 1 registro: a vacancy escolhida | Sim |
-| VAC-16 | Pesquisar por Job Title | PCE V6 | Todos os registros exibidos têm o Job Title filtrado e incluem a vacancy criada | Sim |
-| VAC-17 | Pesquisar por Hiring Manager | PCE V6 | A vacancy criada aparece e todos os registros têm o manager filtrado | Sim |
-| VAC-18 | Pesquisar por Status = Closed | PCE V6 | A vacancy fechada aparece; todos os registros têm status Closed | Sim |
+| VAC-16 | Pesquisar por Job Title | PCE V6 | Todos os registros exibidos têm o Job Title filtrado e a vacancy criada está entre os resultados (percorrendo as páginas) | Sim |
+| VAC-17 | Pesquisar por Hiring Manager | PCE V6 | A vacancy criada está entre os resultados (percorrendo as páginas) e todos os registros têm o manager filtrado | Sim |
+| VAC-18 | Pesquisar por Status = Closed | PCE V6 | A vacancy fechada está entre os resultados; todos os registros têm status Closed | Sim |
 | VAC-19 | Combinar Job Title + Vacancy | Combinação | 1 registro | Sim |
 | VAC-20 | Reset dos filtros | Fluxo alternativo | Filtros voltam ao estado inicial ("-- Select --") e a lista deixa de ser filtrada | Sim |
 
@@ -155,7 +157,15 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 - Candidatos, entrevistas e demais abas de Recruitment.
 - Testes de acessibilidade, desempenho e responsividade (outras camadas/ferramentas).
 - Bloqueio de conta por tentativas excessivas (não existe no demo).
+- Execução em Firefox e WebKit: a configuração existe (`npm test`), mas a validação foi feita apenas no Chromium.
 
-## 5. Riscos conhecidos
-- O site demo é **compartilhado e reinicializado periodicamente**: por isso os testes não dependem de dados pré-existentes (exceto o Job Title `QA Engineer`, configurável por variável de ambiente) e limpam o que criam.
-- Textos de mensagens vêm da versão atual do demo (inglês); se a versão mudar, ajuste em `data/messages.js`.
+## 5. Riscos conhecidos e como a automação os trata
+- **Demo compartilhado e lento:** os testes não dependem de dados pré-existentes (exceto o Job Title `QA Engineer`, configurável por variável de ambiente), usam nomes únicos, têm timeouts maiores e 2 tentativas extras na CI. Uma tentativa extra que passa aparece como *flaky* no relatório.
+- **Limpeza dos dados:** cada teste apaga o que criou, inclusive vacancies fechadas (que não aparecem no dropdown "Vacancy" e por isso são buscadas pelo filtro Status = Closed).
+- **Paginação (50 por página):** como o demo acumula registros, a vacancy criada pode não estar na 1ª página. Os testes a localizam pelo filtro "Vacancy" ou percorrem as páginas dos resultados.
+- **Toast passageiro:** a mensagem "Successfully Saved/Deleted" some rápido; os critérios de aceitação usam o estado final (URL com id, linha na lista, diálogo fechado).
+- **Textos do sistema:** as mensagens vêm da versão atual do demo (inglês); se mudarem, ajuste em `data/messages.js`.
+
+## 6. Resultado da automação
+- 36 testes automatizados: 13 de Login/Logout (`LOG-01` a `LOG-13`) e 23 de Vacancies (`VAC-01` a `VAC-23`), todos os cenários desta lista.
+- Última execução no GitHub Actions (Chromium): **todos os testes passaram**.
