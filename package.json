@@ -1,0 +1,20 @@
+{
+  "name": "orangehrm-e2e",
+  "version": "1.0.0",
+  "description": "Testes E2E (Playwright + Page Object) do OrangeHRM demo: Login e Recruitment/Vacancies",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium",
+    "test:login": "playwright test tests/login.spec.js",
+    "test:vacancies": "playwright test tests/vacancies.spec.js",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed --project=chromium",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0"
+  }
+}
