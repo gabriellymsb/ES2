@@ -1,6 +1,5 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('./BasePage');
-const messages = require('../data/messages');
 
 /** Lista / pesquisa / deleção de vacancies (Recruitment > Vacancies). */
 class VacanciesPage extends BasePage {
@@ -64,10 +63,20 @@ class VacanciesPage extends BasePage {
 
   /** Verifica se o nome é oferecido como opção no filtro "Vacancy". */
   async vacancyFilterHasOption(name) {
-    await this.group('Vacancy').locator('.oxd-select-text').click();
-    const count = await this.page.getByRole('option', { name, exact: true }).count();
-    await this.page.keyboard.press('Escape');
-    return count > 0;
+    const select = this.group('Vacancy').locator('.oxd-select-text');
+    const dropdown = this.page.locator('.oxd-select-dropdown');
+
+    await select.click();
+    await expect(dropdown).toBeVisible();
+    // espera as opções carregarem (além do placeholder "-- Select --")
+    await expect(this.options.nth(1)).toBeVisible();
+    const found = (await this.page.getByRole('option', { name, exact: true }).count()) > 0;
+
+    // fecha clicando de novo no select (Escape não fecha de forma confiável
+    // e deixaria o dropdown aberto, fazendo o próximo clique fechá-lo)
+    await select.click();
+    await expect(dropdown).toBeHidden();
+    return found;
   }
 
   // ---- deleção ----
@@ -75,7 +84,9 @@ class VacanciesPage extends BasePage {
     await this.clickDelete(name);
     await expect(this.deleteDialog).toBeVisible();
     await this.confirmDeleteButton.click();
-    await this.expectToast(messages.deleted);
+    // o toast é passageiro (pode sumir antes da checagem); o sinal confiável é a linha sumir
+    await expect(this.deleteDialog).toBeHidden();
+    await this.expectVacancyNotListed(name);
   }
 
   /** Limpeza silenciosa: remove a vacancy se ela existir. */

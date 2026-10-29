@@ -153,7 +153,7 @@ test.describe('Recruitment > Vacancies — Edição', () => {
     await vacanciesPage.openEdit(original.name);
     await vacancyForm.expectOnEditPage();
     await vacancyForm.fillForm({ name: newName, description: 'Descrição editada' });
-    await vacancyForm.save();
+    await vacancyForm.saveAndWait();
 
     await vacancyForm.expectSaved();
     await vacanciesPage.goto();
@@ -167,7 +167,7 @@ test.describe('Recruitment > Vacancies — Edição', () => {
 
     await vacanciesPage.openEdit(data.name);
     await vacancyForm.fillForm({ active: false });
-    await vacancyForm.save();
+    await vacancyForm.saveAndWait();
 
     await vacancyForm.expectSaved();
     await vacanciesPage.goto();

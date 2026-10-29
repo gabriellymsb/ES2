@@ -1,6 +1,5 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('./BasePage');
-const messages = require('../data/messages');
 
 /** Formulário Add/Edit Vacancy. */
 class VacancyFormPage extends BasePage {
@@ -14,8 +13,15 @@ class VacancyFormPage extends BasePage {
     this.descriptionInput = this.group('Description').locator('textarea');
     this.hiringManagerInput = this.group('Hiring Manager').getByPlaceholder('Type for hints...');
     this.positionsInput = this.group('Number of Positions').locator('input');
-    this.activeWrapper = page.locator('.oxd-checkbox-wrapper').filter({ hasText: /^Active$/ });
-    this.rssWrapper = page.locator('.oxd-checkbox-wrapper').filter({ hasText: 'Publish in RSS' });
+    // "Active" e "Publish in RSS" são switches (input checkbox + texto). Em vez de depender
+    // da classe do componente, pega o menor elemento que contém o texto e o checkbox.
+    const toggle = (text) =>
+      page
+        .locator('div, label')
+        .filter({ has: page.locator('input[type="checkbox"]'), hasText: text })
+        .last();
+    this.activeWrapper = toggle(/^Active$/);
+    this.rssWrapper = toggle(/Publish in RSS/);
     this.saveButton = page.getByRole('button', { name: 'Save' });
     this.cancelButton = page.getByRole('button', { name: 'Cancel' });
     this.autocompleteOptions = page.getByRole('option').filter({ hasNotText: /Searching|No Records/ });
@@ -43,8 +49,10 @@ class VacancyFormPage extends BasePage {
   async setCheckbox(wrapper, checked) {
     const input = wrapper.locator('input[type="checkbox"]');
     if ((await input.isChecked()) !== checked) {
-      await wrapper.locator('.oxd-checkbox-input').click();
+      // o input do switch fica visualmente oculto; click() nativo dispara o evento de mudança
+      await input.evaluate((el) => el.click());
     }
+    await expect(input).toBeChecked({ checked });
   }
 
   /**
@@ -74,6 +82,21 @@ class VacancyFormPage extends BasePage {
     await this.saveButton.click();
   }
 
+  /**
+   * Salva e espera a requisição de gravação terminar (use na edição, onde a URL não muda
+   * e navegar logo em seguida poderia cancelar a gravação).
+   */
+  async saveAndWait() {
+    const request = this.page
+      .waitForResponse(
+        (r) => ['POST', 'PUT'].includes(r.request().method()) && r.url().includes('/recruitment/vacancies'),
+        { timeout: 20_000 },
+      )
+      .catch(() => null); // se o endpoint mudar, os asserts seguintes ainda validam o resultado
+    await this.saveButton.click();
+    await request;
+  }
+
   async cancel() {
     await this.cancelButton.click();
   }
@@ -90,9 +113,14 @@ class VacancyFormPage extends BasePage {
   }
 
   // ---- asserções ----
+  /**
+   * Após salvar, o sistema navega (página inteira) para a tela de edição da vacancy
+   * (/addJobVacancy/<id>). O toast "Successfully Saved" some junto com a página antiga,
+   * por isso o sinal confiável de sucesso é a URL com o id + o título "Edit Vacancy".
+   */
   async expectSaved() {
-    await this.expectToast(messages.saved);
     await expect(this.page).toHaveURL(/\/recruitment\/addJobVacancy\/\d+/);
+    await expect(this.heading).toHaveText('Edit Vacancy');
   }
 
   async expectOnEditPage() {

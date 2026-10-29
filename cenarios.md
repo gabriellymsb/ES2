@@ -111,7 +111,7 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 #### Adição
 | ID | Cenário | Técnica | Resultado esperado | Automatizar |
 |---|---|---|---|---|
-| VAC-01 | Adicionar vacancy só com campos obrigatórios | PCE V1,V2,V3 · D1 | Toast "Successfully Saved"; vacancy aparece na lista com status Active | Sim |
+| VAC-01 | Adicionar vacancy só com campos obrigatórios | PCE V1,V2,V3 · D1 | Sistema abre a tela de edição da vacancy criada (`Edit Vacancy`); ela aparece na lista com status Active | Sim |
 | VAC-02 | Adicionar vacancy com todos os campos (descrição, nº de vagas, RSS) | PCE | Salva; ao reabrir, os dados persistidos estão corretos | Sim |
 | VAC-03 | Adicionar vacancy desmarcando "Active" | PCE V5 | Na lista, status = Closed | Sim |
 | VAC-04 | Salvar sem preencher nada | D5 | "Required" em Vacancy Name, Job Title e Hiring Manager; nada é salvo | Sim |
@@ -126,7 +126,7 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 #### Edição
 | ID | Cenário | Técnica | Resultado esperado | Automatizar |
 |---|---|---|---|---|
-| VAC-12 | Editar nome e descrição | PCE | Toast de sucesso; lista mostra o novo nome e o antigo some | Sim |
+| VAC-12 | Editar nome e descrição | PCE | Alteração gravada; lista mostra o novo nome e o antigo some | Sim |
 | VAC-13 | Fechar vacancy (desmarcar Active) | PCE V5 | Status na lista passa a Closed | Sim |
 | VAC-14 | Editar apagando o nome | PCE I1 | "Required"; alteração não é gravada | Sim |
 
@@ -143,7 +143,7 @@ O formulário só diferencia "vazio" de "preenchido"; os limites relevantes são
 #### Deleção
 | ID | Cenário | Técnica | Resultado esperado | Automatizar |
 |---|---|---|---|---|
-| VAC-21 | Deletar confirmando | Fluxo principal | Toast "Successfully Deleted"; vacancy some da lista | Sim |
+| VAC-21 | Deletar confirmando | Fluxo principal | Diálogo de confirmação fecha e a vacancy some da lista | Sim |
 | VAC-22 | Deletar cancelando na confirmação | Fluxo alternativo | A vacancy permanece na lista | Sim |
 | VAC-23 | Vacancy deletada não é mais pesquisável | Pós-condição | Não aparece como opção no filtro "Vacancy" | Sim |
 

@@ -10,13 +10,13 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1, // o demo é compartilhado e pode oscilar
   workers: 2, // o demo é compartilhado; poucos workers evitam instabilidade
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  timeout: 120_000, // o demo compartilhado costuma ser lento
+  expect: { timeout: 15_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL || 'https://opensource-demo.orangehrmlive.com',
-    actionTimeout: 15_000,
-    navigationTimeout: 30_000,
+    actionTimeout: 20_000,
+    navigationTimeout: 45_000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
