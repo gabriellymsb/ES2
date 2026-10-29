@@ -230,7 +230,7 @@ test.describe('Recruitment > Vacancies — Pesquisa', () => {
   });
 
   test('VAC-18 deve pesquisar por Status = Closed', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
-    const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies, active: false });
+    const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies }, { active: false });
 
     await vacanciesPage.search({ status: 'Closed' });
 
@@ -248,7 +248,7 @@ test.describe('Recruitment > Vacancies — Pesquisa', () => {
   });
 
   test('VAC-20 deve limpar os filtros com Reset', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
-    const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies, jobTitle: OTHER_JOB_TITLE });
+    const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies }, { jobTitle: OTHER_JOB_TITLE });
     await vacanciesPage.search({ vacancy: data.name });
     await vacanciesPage.expectRecordCount(1);
 
