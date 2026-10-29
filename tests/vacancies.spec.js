@@ -1,10 +1,19 @@
 const { test, expect } = require('../fixtures');
-const { buildVacancy, uniqueName, JOB_TITLE, OTHER_JOB_TITLE } = require('../data/vacancyData');
+const {
+  buildVacancy,
+  uniqueName,
+  listName,
+  managerPattern,
+  JOB_TITLE,
+  OTHER_JOB_TITLE,
+} = require('../data/vacancyData');
 const messages = require('../data/messages');
 
 /**
  * Cria uma vacancy pela UI, registra para limpeza e devolve os dados usados
- * (inclui o Hiring Manager escolhido). Termina na lista de vacancies.
+ * (hiringManager = nome completo escolhido no autocomplete).
+ * Termina na lista de vacancies SEM filtros; use `vacanciesPage.find(nome)` para localizar a linha
+ * (a lista é paginada e o demo acumula registros).
  */
 async function createVacancy({ vacanciesPage, vacancyForm, createdVacancies }, overrides = {}) {
   const data = buildVacancy({ hiringManager: true, ...overrides });
@@ -30,9 +39,12 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     const { hiringManager } = await vacancyForm.createVacancy(data);
 
     await vacancyForm.expectSaved();
-    await vacanciesPage.goto();
-    await vacanciesPage.expectVacancyListed(data.name);
-    await vacanciesPage.expectRowValues(data.name, { jobTitle: data.jobTitle, hiringManager, status: 'Active' });
+    await vacanciesPage.find(data.name);
+    await vacanciesPage.expectRowValues(data.name, {
+      jobTitle: data.jobTitle,
+      hiringManager: listName(hiringManager),
+      status: 'Active',
+    });
   });
 
   test('VAC-02 deve adicionar vacancy com todos os campos e persistir os dados', async ({ vacancyForm, vacanciesPage, createdVacancies }) => {
@@ -48,7 +60,7 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     await vacancyForm.createVacancy(data);
     await vacancyForm.expectSaved();
 
-    await vacanciesPage.goto();
+    await vacanciesPage.find(data.name);
     await vacanciesPage.openEdit(data.name);
     await vacancyForm.expectOnEditPage();
     await vacancyForm.expectValues({
@@ -67,7 +79,7 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     await vacancyForm.createVacancy(data);
     await vacancyForm.expectSaved();
 
-    await vacanciesPage.goto();
+    await vacanciesPage.find(data.name);
     await vacanciesPage.expectRowStatus(data.name, 'Closed');
   });
 
@@ -108,8 +120,7 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     await vacancyForm.createVacancy({ name, jobTitle: JOB_TITLE, hiringManager: true });
 
     await vacancyForm.expectSaved();
-    await vacanciesPage.goto();
-    await vacanciesPage.expectVacancyListed(name);
+    await vacanciesPage.find(name);
   });
 
   test('VAC-09 deve rejeitar nome com 51 caracteres (acima do limite)', async ({ vacancyForm }) => {
@@ -140,7 +151,7 @@ test.describe('Recruitment > Vacancies — Adição', () => {
     await vacancyForm.cancel();
 
     await vacanciesPage.goto();
-    await vacanciesPage.expectVacancyNotListed(name);
+    expect(await vacanciesPage.vacancyFilterHasOption(name)).toBe(false);
   });
 });
 
@@ -150,33 +161,34 @@ test.describe('Recruitment > Vacancies — Edição', () => {
     const newName = uniqueName(30, 'AutoVacEdit-');
     createdVacancies.push(newName);
 
+    await vacanciesPage.find(original.name);
     await vacanciesPage.openEdit(original.name);
     await vacancyForm.expectOnEditPage();
     await vacancyForm.fillForm({ name: newName, description: 'Descrição editada' });
     await vacancyForm.saveAndWait();
 
-    await vacancyForm.expectSaved();
+    await vacanciesPage.find(newName);
     await vacanciesPage.goto();
-    await vacanciesPage.expectVacancyListed(newName);
-    await vacanciesPage.expectVacancyNotListed(original.name);
+    expect(await vacanciesPage.vacancyFilterHasOption(original.name)).toBe(false);
   });
 
   test('VAC-13 deve fechar a vacancy ao desmarcar "Active"', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
+    await vacanciesPage.find(data.name);
     await vacanciesPage.expectRowStatus(data.name, 'Active');
 
     await vacanciesPage.openEdit(data.name);
     await vacancyForm.fillForm({ active: false });
     await vacancyForm.saveAndWait();
 
-    await vacancyForm.expectSaved();
-    await vacanciesPage.goto();
+    await vacanciesPage.find(data.name);
     await vacanciesPage.expectRowStatus(data.name, 'Closed');
   });
 
   test('VAC-14 deve exigir o nome ao editar com campo vazio', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
 
+    await vacanciesPage.find(data.name);
     await vacanciesPage.openEdit(data.name);
     await vacancyForm.expectOnEditPage();
     await vacancyForm.clearName();
@@ -184,8 +196,7 @@ test.describe('Recruitment > Vacancies — Edição', () => {
 
     await vacancyForm.expectFieldError('Vacancy Name', messages.required);
     // a alteração não foi gravada
-    await vacanciesPage.goto();
-    await vacanciesPage.expectVacancyListed(data.name);
+    await vacanciesPage.find(data.name);
   });
 });
 
@@ -204,17 +215,17 @@ test.describe('Recruitment > Vacancies — Pesquisa', () => {
 
     await vacanciesPage.search({ jobTitle: data.jobTitle });
 
-    await vacanciesPage.expectVacancyListed(data.name);
+    await vacanciesPage.expectVacancyInResults(data.name);
     await vacanciesPage.expectAllRowsHave('Job Title', data.jobTitle);
   });
 
   test('VAC-17 deve pesquisar por Hiring Manager', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
 
-    await vacanciesPage.search({ hiringManager: data.hiringManager });
+    await vacanciesPage.search({ hiringManager: managerPattern(data.hiringManager) });
 
-    await vacanciesPage.expectVacancyListed(data.name);
-    await vacanciesPage.expectAllRowsHave('Hiring Manager', data.hiringManager);
+    await vacanciesPage.expectVacancyInResults(data.name);
+    await vacanciesPage.expectAllRowsHave('Hiring Manager', listName(data.hiringManager));
   });
 
   test('VAC-18 deve pesquisar por Status = Closed', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
@@ -222,7 +233,7 @@ test.describe('Recruitment > Vacancies — Pesquisa', () => {
 
     await vacanciesPage.search({ status: 'Closed' });
 
-    await vacanciesPage.expectVacancyListed(data.name);
+    await vacanciesPage.expectVacancyInResults(data.name);
     await vacanciesPage.expectAllRowsHave('Status', 'Closed');
   });
 
@@ -250,14 +261,17 @@ test.describe('Recruitment > Vacancies — Pesquisa', () => {
 test.describe('Recruitment > Vacancies — Deleção', () => {
   test('VAC-21 deve deletar a vacancy ao confirmar', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
+    await vacanciesPage.find(data.name);
 
     await vacanciesPage.deleteVacancy(data.name);
 
-    await vacanciesPage.expectVacancyNotListed(data.name);
+    await vacanciesPage.goto();
+    expect(await vacanciesPage.vacancyFilterHasOption(data.name)).toBe(false);
   });
 
   test('VAC-22 deve manter a vacancy ao cancelar a deleção', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
+    await vacanciesPage.find(data.name);
 
     await vacanciesPage.clickDelete(data.name);
     await vacanciesPage.cancelDeleteButton.click();
@@ -269,6 +283,7 @@ test.describe('Recruitment > Vacancies — Deleção', () => {
   test('VAC-23 não deve oferecer a vacancy deletada no filtro "Vacancy"', async ({ loggedIn, vacanciesPage, vacancyForm, createdVacancies }) => {
     const data = await createVacancy({ vacanciesPage, vacancyForm, createdVacancies });
     expect(await vacanciesPage.vacancyFilterHasOption(data.name)).toBe(true);
+    await vacanciesPage.find(data.name);
 
     await vacanciesPage.deleteVacancy(data.name);
     await vacanciesPage.goto();

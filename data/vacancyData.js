@@ -30,4 +30,22 @@ function buildVacancy(overrides = {}) {
   };
 }
 
-module.exports = { JOB_TITLE, OTHER_JOB_TITLE, uniqueName, buildVacancy };
+/**
+ * O formulário mostra o nome completo do funcionário ("Ana Maria Silva"), mas a lista de
+ * vacancies e o filtro mostram só primeiro e último nome ("Ana Silva").
+ */
+function listName(fullName) {
+  const words = fullName.trim().split(/\s+/);
+  return words.length > 2 ? `${words[0]} ${words[words.length - 1]}` : words.join(' ');
+}
+
+/** Regex que casa com o nome do funcionário, com ou sem nome do meio. */
+function managerPattern(fullName) {
+  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const words = fullName.trim().split(/\s+/);
+  const first = escape(words[0]);
+  const last = escape(words[words.length - 1]);
+  return words.length > 1 ? new RegExp(`^${first}(\\s.*)?\\s${last}$`) : new RegExp(`^${first}$`);
+}
+
+module.exports = { JOB_TITLE, OTHER_JOB_TITLE, uniqueName, buildVacancy, listName, managerPattern };

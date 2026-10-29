@@ -56,6 +56,16 @@ class VacanciesPage extends BasePage {
     await expect(this.recordsInfo).toBeVisible();
   }
 
+  /**
+   * Abre a lista já filtrada pela vacancy. A lista é paginada (50 por página) e o demo
+   * acumula registros, então a vacancy nova pode não estar na 1ª página sem o filtro.
+   */
+  async find(name) {
+    await this.goto();
+    await this.search({ vacancy: name });
+    await this.expectVacancyListed(name);
+  }
+
   async reset() {
     await this.resetButton.click();
     await expect(this.recordsInfo).toBeVisible();
@@ -100,6 +110,24 @@ class VacanciesPage extends BasePage {
   // ---- asserções ----
   async expectVacancyListed(name) {
     await expect(this.row(name)).toHaveCount(1);
+  }
+
+  /**
+   * Confirma que a vacancy está entre os resultados, percorrendo as páginas
+   * (usado quando o filtro devolve mais de 50 registros).
+   */
+  async expectVacancyInResults(name) {
+    const pager = this.page.getByRole('navigation', { name: 'Pagination Navigation' });
+    await expect(this.rows.first()).toBeVisible();
+    for (let current = 1; current <= 10; current++) {
+      if ((await this.row(name).count()) > 0) return;
+      const nextPage = pager.getByRole('button', { name: String(current + 1), exact: true });
+      if ((await nextPage.count()) === 0) break;
+      const firstRowBefore = await this.rows.first().innerText();
+      await nextPage.click();
+      await expect.poll(() => this.rows.first().innerText()).not.toBe(firstRowBefore);
+    }
+    await expect(this.row(name)).toHaveCount(1, { timeout: 2_000 });
   }
 
   async expectVacancyNotListed(name) {
